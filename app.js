@@ -255,7 +255,10 @@ window.addEventListener('resize', () => applyTransform());
 viewport.addEventListener('click', (event) => {
   if (Date.now() - lastDragAt < 220) return;
   const t = quadrantAt(event.clientX, event.clientY);
-  if (t) openLightbox(t);
+  if (!t) return;
+  // geohex payments: pay mode / Shift+click mints an instrument fenced to this quadrant
+  if (window.GeohexPay && GeohexPay.onQuadrantActivate(t.qx, t.qy, event)) return;
+  openLightbox(t);
 });
 
 viewport.addEventListener('wheel', (event) => {
@@ -292,6 +295,9 @@ fetch('map/manifest.json')
   .then((manifest) => {
     const b = manifest.bounds;
     originX = b.qx_min; originY = b.qy_min;
+    // geohex payments: expose the map origin and notify the pay layer
+    window.__isoMap = { originX, originY, QUAD };
+    if (window.GeohexPay) GeohexPay.onMapReady({ originX, originY });
     const cols = b.qx_max - b.qx_min + 1, rows = b.qy_max - b.qy_min + 1;
     mapWidth = cols * QUAD;
     mapHeight = rows * QUAD;
