@@ -169,3 +169,38 @@ body.pay-mode .map-hint::after {
     border-radius: 12px 12px 0 0;
   }
 }
+
+/* Real GeoHex cell overlay + lightbox decode card (geohex.js) */
+.geohex-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.geohex-cell-poly {
+  fill: rgba(201, 162, 39, 0.13);
+  stroke: #C9A227;
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.lightbox-geohex {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(201, 162, 39, 0.55);
+  background: #101216;
+  color: #d7dae0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: left;
+}
+.lightbox-geohex:empty { display: none; }
+.lightbox-geohex .gh-title {
+  color: #C9A227;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+}
+.lightbox-geohex .gh-uuid { font-size: 13px; margin: 2px 0; overflow-wrap: anywhere; }
+.lightbox-geohex .gh-bound { opacity: 0.72; }

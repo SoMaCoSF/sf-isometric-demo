@@ -1,7 +1,10 @@
 /**
  * Geohex payments on the SF isometric map.
  * Drop into SoMaCoSF/sf-isometric-demo as geohex-pay.js
- * Each quadrant is a spend cell: geohex:sf:iso:{qx}_{qy}
+ * Each quadrant's manifest lat/lon is assigned the REAL GeoHex cell that
+ * contains it (geohex.js, gyst-hex 0x340, layer 3, SF anchor v0 candidate);
+ * instruments fence to that cell's UUID. The legacy string form below is a
+ * fallback for if the cell layer ever fails to load — it is not a GeoHex cell.
  */
 (function () {
   'use strict';
@@ -77,7 +80,14 @@
     return { allowed: true, reason: 'location matches geo constraint' };
   }
 
-  function cellId(qx, qy) {
+  function cellId(qx, qy, lat, lon) {
+    if (window.GeoHexCell) {
+      var p = (lat != null && lon != null) ? { lat: lat, lon: lon } : GeoHexCell.latLonForQuadrant(qx, qy);
+      if (p) {
+        var ref = GeoHexCell.cellForLatLon(p.lat, p.lon);
+        return GeoHexCell.cellUuid(ref.q, ref.r, ref.layer);
+      }
+    }
     return 'geohex:sf:iso:' + qx + '_' + qy;
   }
 
@@ -123,7 +133,7 @@
 
   function mintOnQuadrant(qx, qy, opts) {
     opts = opts || {};
-    var cell = cellId(qx, qy);
+    var cell = cellId(qx, qy, opts.lat, opts.lon);
     var amountCents = opts.amountCents != null ? opts.amountCents : 1500 + ((qx * 13 + qy * 7) % 8500);
     var spendCell = opts.spendCell != null ? opts.spendCell : cell;
     var cls = opts.cls || (opts.escrow ? 'goods_physical' : 'api_micro');
@@ -193,9 +203,11 @@
     var el = document.getElementById('pay-detail');
     if (!el) return;
     var t = pin.tree;
+    var dec = (window.GeoHexCell && GeoHexCell.decodeCell(pin.cell)) || null;
     el.innerHTML =
       '<div class="pay-status pay-status--' + pin.status + '">' + pin.status + '</div>' +
-      '<div class="pay-line"><span>cell</span> ' + escapeHtml(pin.cell) + '</div>' +
+      '<div class="pay-line"><span>geohex cell</span> <code>' + escapeHtml(pin.cell) + '</code></div>' +
+      (dec ? '<div class="pay-line"><span>decode</span> q ' + dec.q + ' · r ' + dec.r + ' · layer ' + dec.layer + ' · type 0x340 (from the UUID alone)</div>' : '') +
       '<div class="pay-line"><span>amount</span> $' + (pin.amountCents / 100).toFixed(2) + '</div>' +
       '<div class="pay-line"><span>wallet</span> <code>' + escapeHtml(t.wallet) + '</code></div>' +
       '<div class="pay-line"><span>tx</span> <code>' + escapeHtml(t.transaction) + '</code></div>' +
@@ -270,9 +282,9 @@
     ensureOverlay();
   }
 
-  function onQuadrantActivate(qx, qy, event) {
+  function onQuadrantActivate(qx, qy, event, tile) {
     if (!payMode && !(event && event.shiftKey)) return false;
-    mintOnQuadrant(qx, qy);
+    mintOnQuadrant(qx, qy, { lat: tile && tile.lat, lon: tile && tile.lon });
     return true;
   }
 
@@ -286,7 +298,7 @@
       '  <strong>Geohex payments</strong>' +
       '  <span class="pay-badge">demo · no funds</span>' +
       '</div>' +
-      '<p class="pay-muted">Each map quadrant is a spend cell (<code>geohex:sf:iso:qx_qy</code>). Disposable GYST payment UUIDs, geo-fenced to that cell.</p>' +
+      '<p class="pay-muted">Each quadrant carries a lat/lon in the manifest. The GeoHex cell containing it (gyst-hex 0x340, layer 3, SF anchor v0 — CANDIDATE, not ratified) is its spend cell. Disposable payment UUIDs, geo-fenced to that cell UUID.</p>' +
       '<div class="pay-actions">' +
       '  <button type="button" id="pay-mode-toggle" aria-pressed="false">Pay mode</button>' +
       '  <button type="button" id="pay-run-suite" class="secondary">Run suite</button>' +

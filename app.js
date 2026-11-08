@@ -209,6 +209,8 @@ function openLightbox(t) {
   lightboxImage.src = t.url;
   lightboxImage.alt = t.caption;
   lightboxCaption.textContent = t.caption;
+  // geohex: show the real GeoHex cell containing this quadrant + draw it on the map
+  if (window.GeoHexCell) GeoHexCell.showForTile(t);
   if (typeof lightbox.showModal === 'function') lightbox.showModal();
   else lightbox.setAttribute('open', '');
 }
@@ -256,8 +258,8 @@ viewport.addEventListener('click', (event) => {
   if (Date.now() - lastDragAt < 220) return;
   const t = quadrantAt(event.clientX, event.clientY);
   if (!t) return;
-  // geohex payments: pay mode / Shift+click mints an instrument fenced to this quadrant
-  if (window.GeohexPay && GeohexPay.onQuadrantActivate(t.qx, t.qy, event)) return;
+  // geohex payments: pay mode / Shift+click mints an instrument fenced to this quadrant's GeoHex cell
+  if (window.GeohexPay && GeohexPay.onQuadrantActivate(t.qx, t.qy, event, t)) return;
   openLightbox(t);
 });
 
@@ -298,6 +300,8 @@ fetch('map/manifest.json')
     // geohex payments: expose the map origin and notify the pay layer
     window.__isoMap = { originX, originY, QUAD };
     if (window.GeohexPay) GeohexPay.onMapReady({ originX, originY });
+    // geohex cells: bind the manifest grid (per-quadrant lat/lon is the position source)
+    if (window.GeoHexCell) GeoHexCell.bindManifest(manifest);
     const cols = b.qx_max - b.qx_min + 1, rows = b.qy_max - b.qy_min + 1;
     mapWidth = cols * QUAD;
     mapHeight = rows * QUAD;
@@ -319,7 +323,7 @@ fetch('map/manifest.json')
       const webp = `map/${q.url.replace(/\.png$/, '.webp')}`;
       const png = `map/${q.url}`;
       const data = {
-        el, qx: q.qx, qy: q.qy, url: webp, fallback: png,
+        el, qx: q.qx, qy: q.qy, lat: q.lat, lon: q.lon, url: webp, fallback: png,
         caption: `Quadrant ${q.qx}, ${q.qy}${q.src ? ` · source tile ${q.src}` : ''}`,
         loaded: false,
       };
